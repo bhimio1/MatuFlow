@@ -3,6 +3,9 @@
   "name": "MatuFlow Global Injector",
   "version": "1.0",
   "description": "Injects Matugen CSS variables into every webpage.",
+  "background": {
+    "service_worker": "background.js"
+  },
   "permissions": ["storage"],
   "host_permissions": ["*://*/*"],
   "content_scripts": [

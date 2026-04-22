@@ -1,41 +1,31 @@
 (function() {
-  // In the extension, the dashboard might run as a full page or a popup.
-  // We want to ensure it always points to the local Python RAM cache.
-  const BRIDGE_URL = 'http://localhost:3000/api/theme';
+  function applyCss(css) {
+    if (!css) return;
 
-  async function applyGlobalTheme() {
-    try {
-      const response = await fetch(BRIDGE_URL);
-      const data = await response.json();
-      
-      if (data.css) {
-        // Create or update a style tag at the top of the head
-        let styleTag = document.getElementById('matuflow-bridge-vars');
-        if (!styleTag) {
-          styleTag = document.createElement('style');
-          styleTag.id = 'matuflow-bridge-vars';
-          document.documentElement.appendChild(styleTag);
-        }
+    // Create or update a style tag at the top of the head
+    let styleTag = document.getElementById('matuflow-bridge-vars');
+    if (!styleTag) {
+      styleTag = document.createElement('style');
+      styleTag.id = 'matuflow-bridge-vars';
+      document.documentElement.appendChild(styleTag);
+    }
 
-        // We only care about the :root block from the CSS
-        const rootMatch = data.css.match(/:root\s*{[\s\S]*?}/);
-        if (rootMatch) {
-          styleTag.textContent = rootMatch[0];
-          console.log('[MatuFlow] Global variables injected');
-        }
-      }
-    } catch (e) {
-      // Fail silently on most pages to avoid console clutter
+    // We only care about the :root block from the CSS
+    const rootMatch = css.match(/:root\s*{[\s\S]*?}/);
+    if (rootMatch) {
+      styleTag.textContent = rootMatch[0];
     }
   }
 
-  // Apply immediately
-  applyGlobalTheme();
+  // Load initial theme from storage
+  chrome.storage.local.get(['matuflow_theme'], (result) => {
+    applyCss(result.matuflow_theme);
+  });
 
-  // Re-apply when the tab enters focus (to sync changes)
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      applyGlobalTheme();
+  // Listen for background updates
+  chrome.storage.onChanged.addListener((changes) => {
+    if (changes.matuflow_theme) {
+      applyCss(changes.matuflow_theme.newValue);
     }
   });
 })();
