@@ -121,6 +121,14 @@ export default function App() {
       if (data.css) {
         setCssCode(data.css);
         setLastSync(new Date(data.updatedAt).toLocaleTimeString());
+        
+        // Push to extension storage if available so other tabs sync immediately
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ 
+            'matuflow_theme': data.css,
+            'matuflow_updated_at': data.updatedAt 
+          });
+        }
       }
     } catch (err) {
       console.error("Failed to fetch theme from RAM:", err);

@@ -8,14 +8,20 @@ let pollInterval = null;
 
 async function fetchAndStoreTheme() {
   try {
-    const response = await fetch(BRIDGE_URL);
+    // Add cache-buster to bypass any middleman caching
+    const cacheBuster = `?t=${Date.now()}`;
+    const response = await fetch(BRIDGE_URL + cacheBuster);
     const data = await response.json();
     
     if (data.css) {
-      // Store in local storage for inject.js to pick up
-      chrome.storage.local.set({ 
-        'matuflow_theme': data.css,
-        'matuflow_updated_at': data.updatedAt 
+      // Small optimization: Only set if changed
+      chrome.storage.local.get(['matuflow_updated_at'], (result) => {
+        if (result.matuflow_updated_at !== data.updatedAt) {
+          chrome.storage.local.set({ 
+            'matuflow_theme': data.css,
+            'matuflow_updated_at': data.updatedAt 
+          });
+        }
       });
     }
   } catch (e) {
@@ -23,13 +29,23 @@ async function fetchAndStoreTheme() {
   }
 }
 
-// Initial fetch
-fetchAndStoreTheme();
+// MV3 Service Workers hibernate. Using multiple triggers to wake it up.
 
-// Poll every 5 seconds for system-wide updates
-// We use a simple interval here since we're in a persistent-ish context (MV3 SW stays alive while active)
-setInterval(fetchAndStoreTheme, 5000);
+// 1. Periodic poll (for when browser is active)
+setInterval(fetchAndStoreTheme, 2000); 
 
-// Also fetch when extension is clicked or tab changes to ensure fresh data
+// 2. Alarm fallback (MV3 recommended for background tasks)
+chrome.alarms.create('sync_theme', { periodInMinutes: 1 });
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'sync_theme') {
+    fetchAndStoreTheme();
+  }
+});
+
+// 3. Activity triggers (Wake up on tab changes/navigation)
 chrome.tabs.onActivated.addListener(fetchAndStoreTheme);
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status === 'complete') fetchAndStoreTheme();
+});
 chrome.runtime.onInstalled.addListener(fetchAndStoreTheme);
+chrome.runtime.onStartup.addListener(fetchAndStoreTheme);

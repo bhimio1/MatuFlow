@@ -38,9 +38,12 @@ class ThemeBridgeHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         # API Route: Get Theme
-        if self.path == '/api/theme':
+        if self.path == '/api/theme' or self.path.startswith('/api/theme?'):
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
+            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            self.send_header('Pragma', 'no-cache')
+            self.send_header('Expires', '0')
             self.end_headers()
             self.wfile.write(json.dumps(RAM_CACHE).encode())
             return
