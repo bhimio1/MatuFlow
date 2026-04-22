@@ -27,14 +27,14 @@ class ThemeBridgeHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(RAM_CACHE).encode())
             return
         
-        # Fallback to serving static files from 'dist'
+        # Fallback to serving static files from 'extension/dashboard'
         # If in root, serve index.html
-        if self.path == '/' or not os.path.exists(os.path.join('dist', self.path.lstrip('/'))):
+        if self.path == '/' or not os.path.exists(os.path.join('extension/dashboard', self.path.lstrip('/'))):
             self.path = '/index.html'
         
-        # Change directory to dist for simple serving
+        # Change directory to extension/dashboard for simple serving
         original_dir = os.getcwd()
-        os.chdir('dist')
+        os.chdir('extension/dashboard')
         try:
             return super().do_GET()
         finally:
@@ -64,18 +64,18 @@ class ThemeBridgeHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
 
 def run():
-    # Ensure dist exists
-    if not os.path.exists('dist'):
-        print("Error: 'dist' folder not found. Please run 'npm run build' first.")
+    # Ensure extension/dashboard exists
+    if not os.path.exists('extension/dashboard'):
+        print("Error: 'extension/dashboard' folder not found. Please run 'npm run build' first.")
         # Create a dummy index if missing for first boot
-        os.makedirs('dist', exist_ok=True)
-        with open('dist/index.html', 'w') as f:
+        os.makedirs('extension/dashboard', exist_ok=True)
+        with open('extension/dashboard/index.html', 'w') as f:
             f.write("<h1>Building application... please refresh in a moment.</h1>")
 
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("0.0.0.0", PORT), ThemeBridgeHandler) as httpd:
         print(f"Python Theme Bridge running at http://0.0.0.0:{PORT}")
-        print("Serving from RAM cache + 'dist' folder")
+        print("Serving from RAM cache + 'extension/dashboard' folder")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
