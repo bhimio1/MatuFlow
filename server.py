@@ -7,10 +7,28 @@ from datetime import datetime
 
 # Configuration
 PORT = 3000
+DB_FILE = "theme_state.json"
 RAM_CACHE = {
     "css": "",
     "updatedAt": datetime.now().isoformat()
 }
+
+def load_persistence():
+    global RAM_CACHE
+    if os.path.exists(DB_FILE):
+        try:
+            with open(DB_FILE, 'r') as f:
+                RAM_CACHE = json.load(f)
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] Loaded persisted theme from {DB_FILE}")
+        except Exception as e:
+            print(f"Error loading persistence: {e}")
+
+def save_persistence():
+    try:
+        with open(DB_FILE, 'w') as f:
+            json.dump(RAM_CACHE, f)
+    except Exception as e:
+        print(f"Error saving persistence: {e}")
 
 class ThemeBridgeHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
@@ -49,7 +67,8 @@ class ThemeBridgeHandler(http.server.SimpleHTTPRequestHandler):
             if post_data:
                 RAM_CACHE["css"] = post_data
                 RAM_CACHE["updatedAt"] = datetime.now().isoformat()
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] Bridge Reloaded: {len(post_data)} bytes cached in RAM")
+                save_persistence()
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] Bridge Reloaded: {len(post_data)} bytes cached in RAM (and persisted)")
                 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
@@ -64,6 +83,9 @@ class ThemeBridgeHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
 
 def run():
+    # Load previous state if exists
+    load_persistence()
+
     # Ensure extension/dashboard exists
     if not os.path.exists('extension/dashboard'):
         print("Error: 'extension/dashboard' folder not found. Please run 'npm run build' first.")

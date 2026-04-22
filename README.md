@@ -13,11 +13,12 @@ npm install
 npm run build
 ```
 
-### 2. Start the Local RAM Cache
-The Python bridge holds your theme in memory and satisfies requests from the extension.
+### 2. Start the Local Service
+The Python service holds your theme in memory, persists it to disk, and satisfies requests from the extension.
 ```bash
 python3 server.py
 ```
+*Note: The server now automatically saves your theme to `theme_state.json` and restores it on startup.*
 
 ### 3. Load the Extension
 1. Open your browser's extensions page (`chrome://extensions`).
@@ -79,35 +80,62 @@ The `bridge.py` script is your local utility for pushing data to the RAM cache.
 
 ---
 
+## 💾 Persistence
+
+The `server.py` now includes a simple JSON database (`theme_state.json`). 
+- **Auto-Save**: Any bridge reload (`bridge.py --reload`) or manual update is immediately saved to disk.
+- **Auto-Load**: When you restart your PC or the server, the previous theme is restored instantly without needing to trigger a new theme generation.
+
+---
+
 ## ⚙️ Autostart Configuration
 
-To keep your theme synced across reboots, you should run the `bridge.py --watch` command on startup.
+To make MatuFlow feel like a native part of your OS, you should set both the **Server** (the cache) and the **Bridge** (the watch service) to start automatically.
 
-### For Portable/Desktop Environments (GNOME, KDE, XFCE)
-1. Open **Startup Applications**.
-2. Add a new entry:
-   - **Name**: MatuFlow Bridge
-   - **Command**: `python3 /absolute/path/to/bridge.py --watch --file /path/to/your/colors.css`
-   - **Comment**: Syncs system colors to browser.
+### Windows (Autorun)
+1. Press `Win + R`, type `shell:startup`, and press Enter.
+2. Create a new shortcut in this folder for the server:
+   - **Target**: `pythonw.exe "C:\path\to\matuflow\server.py"`
+3. If you use a file watcher, create another shortcut:
+   - **Target**: `pythonw.exe "C:\path\to\matuflow\bridge.py" --watch --file "C:\path\to\colors.css"`
 
-### Using Systemd (Headless/Advanced)
-Create a file at `~/.config/systemd/user/matuflow.service`:
+### Linux (Systemd)
+Create a file at `~/.config/systemd/user/matuflow-server.service`:
 ```ini
 [Unit]
-Description=MatuFlow Theme Bridge Service
+Description=MatuFlow Server (RAM Cache)
 
 [Service]
-ExecStart=/usr/bin/python3 /path/to/bridge.py --watch --file %h/.cache/matugen/colors.css
+WorkingDirectory=/path/to/matuflow
+ExecStart=/usr/bin/python3 server.py
 Restart=always
 
 [Install]
 WantedBy=default.target
 ```
-Then run:
+
+If you use the bridge watcher, create `~/.config/systemd/user/matuflow-bridge.service`:
+```ini
+[Unit]
+Description=MatuFlow Bridge (File Watcher)
+After=matuflow-server.service
+
+[Service]
+ExecStart=/usr/bin/python3 /path/to/matuflow/bridge.py --watch --file %h/.cache/matugen/colors.css
+Restart=always
+
+[Install]
+WantedBy=default.target
+```
+
+Then enable them:
 ```bash
 systemctl --user daemon-reload
-systemctl --user enable --now matuflow.service
+systemctl --user enable --now matuflow-server.service matuflow-bridge.service
 ```
+
+### macOS (Launchd)
+Users on MacOS can use the **Users & Groups > Login Items** in System Settings to add `server.py` (wrapped in an `.app` or Automator script) to their startup list.
 
 ---
 
