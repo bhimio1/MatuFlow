@@ -7,6 +7,9 @@ import time
 
 def sync_theme(url, file_path):
     """Reads the local file and pushes it to the RAM cache of the bridge server."""
+    # Expand tildes (~) automatically to avoid errors in matugen/shell hooks
+    file_path = os.path.expanduser(file_path)
+    
     if not os.path.exists(file_path):
         print(f"Error: File not found at {file_path}")
         return False
